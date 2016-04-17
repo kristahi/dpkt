@@ -5,6 +5,10 @@
 import dpkt
 from decorators import deprecated
 
+import struct, socket
+from tcpinudp import TiU
+from tcp import TCP
+from udp import UDP
 
 class IP(dpkt.Packet):
     __hdr__ = (
@@ -129,6 +133,19 @@ class IP(dpkt.Packet):
         else:  # very likely due to TCP segmentation offload
             buf = buf[self.__hdr_len__ + ol:]
         try:
+            #print("protonum=%u" % self.p)
+            if self.p == IP_PROTO_UDP:
+                port = socket.ntohs(struct.unpack('H', buf[0:2])[0])
+                if port == 1021:
+                    fakebuf = TiU(buf[8:]).tcpbuf
+                    if fakebuf:
+                        #print(dpkt.hexdump(fakebuf))
+                        self.data = TCP(fakebuf)
+                    else:
+                        self.data = UDP(buf)
+                    setattr(self, self.data.__class__.__name__.lower(), self.data)
+                    return
+
             self.data = self._protosw[self.p](buf)
             setattr(self, self.data.__class__.__name__.lower(), self.data)
         except (KeyError, dpkt.UnpackError):

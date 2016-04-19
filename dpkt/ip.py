@@ -137,9 +137,10 @@ class IP(dpkt.Packet):
             if self.p == IP_PROTO_UDP:
                 port = socket.ntohs(struct.unpack('H', buf[0:2])[0])
                 if port == 1021:
-                    fakebuf = TiU(buf[8:]).tcpbuf
+                    fakebuf = TiU(buf[8:], self.src).tcpbuf
                     if fakebuf:
                         #print(dpkt.hexdump(fakebuf))
+                        self.p = IP_PROTO_TCP
                         self.data = TCP(fakebuf)
                     else:
                         self.data = UDP(buf)

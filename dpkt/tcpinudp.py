@@ -19,6 +19,11 @@ class TiU(dpkt.Packet):
     fid = -1
     off = 0
     tcpbuf = ''
+    src = ''
+
+    def __init__(self, buf, src):
+        self.src = src #Before Packet constructor, which calls unpack!
+        dpkt.Packet.__init__(self, buf)
 
     def unpack(self, buf):
         dpkt.Packet.unpack(self, buf)
@@ -44,10 +49,16 @@ class TiU(dpkt.Packet):
             self.tcpbuf = buf[12:16] + buf[4:12] + noff + buf[1:4] + buf[16:]
 
             srcport, dstport = [socket.ntohs(p) for p in struct.unpack_from('HH', buf, 12)]
-            fid_portmap[fid] = (srcport, dstport)
+            #Only do a mapping when we see the initial SYN!
+            #(Should fix mappings to be per host-pair really, but I don't need that now)
+            if (self.flags & 0x12 == 0x02):
+                fid_portmap[fid] = (srcport, dstport, self.src)
         else:
             #Inflate header
-            srcport, dstport = fid_portmap[fid]
+            srcport, dstport, initiator = fid_portmap[fid]
+            #Swap ports if it was on return path
+            if (self.src != initiator):
+                srcport, dstport = dstport, srcport #Yep, that works!
             self.tcpbuf = str(struct.pack('HH', socket.htons(srcport),
                                           socket.htons(dstport))) \
                    + buf[4:12] \

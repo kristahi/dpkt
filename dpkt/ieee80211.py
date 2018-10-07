@@ -333,6 +333,8 @@ class IEEE80211(dpkt.Packet):
             self.fcs = struct.unpack('I', self.data[-1 * FCS_LENGTH:])[0]
             self.data = self.data[0: -1 * FCS_LENGTH]
 
+        self.length = len(self.data)
+
         if self.type == MGMT_TYPE:
             self.mgmt = self.MGMT_Frame(self.data)
             self.data = self.mgmt.data
